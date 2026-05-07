@@ -1,116 +1,88 @@
-"""Menu system for Crossy Road-style frog game."""
-
 import pygame
-import sys
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+DARK_GREEN = (20, 80, 20)
+LIGHT_GREEN = (80, 180, 80)
+GOLD = (255, 215, 0)
+RED = (220, 50, 50)
+GRAY = (180, 180, 180)
+RIVER_BLUE = (28, 107, 160)
 
 
-class Menu:
-    """Handles menu display and user interactions."""
+def _draw_background(surface: pygame.Surface):
+    w, h = surface.get_size()
+    surface.fill(DARK_GREEN)
+    pygame.draw.rect(surface, RIVER_BLUE, (0, h // 2 - 55, w, 110))
+    for rx in range(0, w, 48):
+        pygame.draw.ellipse(surface, (20, 85, 135), (rx, h // 2 - 10, 32, 20))
 
-    def __init__(self, screen_width, screen_height):
-        """Initialize menu with screen dimensions."""
-        self.screen_width = screen_width
-        self.screen_height = screen_height
-        self.font_title = pygame.font.Font(None, 72)
-        self.font_text = pygame.font.Font(None, 48)
-        self.font_small = pygame.font.Font(None, 36)
-        self.background_color = (34, 139, 34)  # Forest green
 
-    def draw_main_menu(self, screen):
-        """Draw the main menu screen."""
-        screen.fill(self.background_color)
+def _draw_frog(surface: pygame.Surface, cx: int, cy: int, size: int = 56):
+    r = pygame.Rect(cx - size // 2, cy - size // 2, size, size)
+    pygame.draw.ellipse(surface, LIGHT_GREEN, r)
+    for ex in (r.x + 14, r.right - 14):
+        pygame.draw.circle(surface, WHITE, (ex, r.y + 14), 10)
+        pygame.draw.circle(surface, BLACK, (ex + 1, r.y + 14), 5)
+    pygame.draw.arc(surface, BLACK, (r.x + 14, r.centery, size - 28, 18), 3.14, 0, 3)
 
-        # Title
-        title = self.font_title.render("FROGGY CROSSER", True, (255, 215, 0))
-        title_rect = title.get_rect(center=(self.screen_width // 2, 100))
-        screen.blit(title, title_rect)
 
-        # Instructions
-        instructions = [
-            "Use ARROW KEYS to move the frog",
-            "Cross the logs to reach the other side",
-            "Don't get hit by moving logs!",
-            "",
-            "Press SPACE to START",
-            "Press Q to QUIT",
-        ]
+def draw_menu(surface: pygame.Surface, high_score: int):
+    w, h = surface.get_size()
+    _draw_background(surface)
 
-        y_offset = 250
-        for instruction in instructions:
-            if instruction == "":
-                y_offset += 30
-                continue
+    font_big = pygame.font.SysFont("Arial", 62, bold=True)
+    font_med = pygame.font.SysFont("Arial", 30)
+    font_sm = pygame.font.SysFont("Arial", 22)
 
-            if "SPACE" in instruction or "QUIT" in instruction:
-                text = self.font_small.render(instruction, True, (255, 255, 0))
-            else:
-                text = self.font_small.render(instruction, True, (255, 255, 255))
+    title = font_big.render("FROG LEAP", True, GOLD)
+    surface.blit(title, title.get_rect(center=(w // 2, h // 2 - 170)))
 
-            text_rect = text.get_rect(center=(self.screen_width // 2, y_offset))
-            screen.blit(text, text_rect)
-            y_offset += 50
+    _draw_frog(surface, w // 2, h // 2 - 55, 70)
 
-    def draw_pause_menu(self, screen):
-        """Draw the pause menu overlay."""
-        overlay = pygame.Surface((self.screen_width, self.screen_height))
-        overlay.set_alpha(200)
-        overlay.fill((0, 0, 0))
-        screen.blit(overlay, (0, 0))
+    prompt = font_med.render("Press  ENTER  to Play", True, WHITE)
+    surface.blit(prompt, prompt.get_rect(center=(w // 2, h // 2 + 60)))
 
-        # Pause text
-        pause_text = self.font_title.render("PAUSED", True, (255, 215, 0))
-        pause_rect = pause_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2 - 100))
-        screen.blit(pause_text, pause_rect)
+    hints = ["Arrow Keys / WASD — Move", "ESC — Quit"]
+    for i, hint in enumerate(hints):
+        t = font_sm.render(hint, True, GRAY)
+        surface.blit(t, t.get_rect(center=(w // 2, h // 2 + 115 + i * 28)))
 
-        # Instructions
-        resume_text = self.font_text.render("Press SPACE to Resume", True, (255, 255, 255))
-        resume_rect = resume_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
-        screen.blit(resume_text, resume_rect)
+    if high_score > 0:
+        hs = font_med.render(f"Best: {high_score}", True, GOLD)
+        surface.blit(hs, hs.get_rect(center=(w // 2, h // 2 + 200)))
 
-        quit_text = self.font_text.render("Press Q to Quit", True, (255, 255, 255))
-        quit_rect = quit_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2 + 80))
-        screen.blit(quit_text, quit_rect)
 
-    def draw_game_over_menu(self, screen, score, high_score):
-        """Draw the game over menu."""
-        screen.fill(self.background_color)
+def draw_hud(surface: pygame.Surface, score: int, high_score: int):
+    font = pygame.font.SysFont("Arial", 28, bold=True)
 
-        # Game Over text
-        game_over_text = self.font_title.render("GAME OVER!", True, (255, 0, 0))
-        game_over_rect = game_over_text.get_rect(center=(self.screen_width // 2, 100))
-        screen.blit(game_over_text, game_over_rect)
+    bar = pygame.Surface((surface.get_width(), 44), pygame.SRCALPHA)
+    bar.fill((0, 0, 0, 130))
+    surface.blit(bar, (0, 0))
 
-        # Score
-        score_text = self.font_text.render(f"Score: {score}", True, (255, 255, 255))
-        score_rect = score_text.get_rect(center=(self.screen_width // 2, 250))
-        screen.blit(score_text, score_rect)
+    sc = font.render(f"Score: {score}", True, WHITE)
+    hs = font.render(f"Best: {high_score}", True, GOLD)
+    surface.blit(sc, (12, 8))
+    surface.blit(hs, (surface.get_width() - hs.get_width() - 12, 8))
 
-        # High Score
-        high_score_text = self.font_text.render(f"Best: {high_score}", True, (255, 215, 0))
-        high_score_rect = high_score_text.get_rect(center=(self.screen_width // 2, 330))
-        screen.blit(high_score_text, high_score_rect)
 
-        # Instructions
-        restart_text = self.font_small.render("Press SPACE to Play Again", True, (255, 255, 255))
-        restart_rect = restart_text.get_rect(center=(self.screen_width // 2, 450))
-        screen.blit(restart_text, restart_rect)
+def draw_game_over(surface: pygame.Surface, score: int, high_score: int):
+    w, h = surface.get_size()
 
-        quit_text = self.font_small.render("Press Q to Quit", True, (255, 255, 255))
-        quit_rect = quit_text.get_rect(center=(self.screen_width // 2, 530))
-        screen.blit(quit_text, quit_rect)
+    overlay = pygame.Surface((w, h), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 160))
+    surface.blit(overlay, (0, 0))
 
-    def draw_hud(self, screen, score, level):
-        """Draw heads-up display during gameplay."""
-        font = pygame.font.Font(None, 36)
+    font_big = pygame.font.SysFont("Arial", 54, bold=True)
+    font_med = pygame.font.SysFont("Arial", 32)
+    font_sm = pygame.font.SysFont("Arial", 24)
 
-        # Score
-        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
-        screen.blit(score_text, (10, 10))
+    go = font_big.render("GAME OVER", True, RED)
+    sc = font_med.render(f"Score: {score}", True, WHITE)
+    hs = font_med.render(f"Best:  {high_score}", True, GOLD)
+    ret = font_sm.render("ENTER to play again  |  ESC to quit", True, GRAY)
 
-        # Level/Distance
-        level_text = font.render(f"Distance: {level}", True, (255, 255, 255))
-        screen.blit(level_text, (10, 50))
-
-        # Controls hint
-        controls = font.render("SPACE: Pause | Q: Quit", True, (200, 200, 200))
-        screen.blit(controls, (self.screen_width - 400, 10))
+    surface.blit(go, go.get_rect(center=(w // 2, h // 2 - 80)))
+    surface.blit(sc, sc.get_rect(center=(w // 2, h // 2)))
+    surface.blit(hs, hs.get_rect(center=(w // 2, h // 2 + 44)))
+    surface.blit(ret, ret.get_rect(center=(w // 2, h // 2 + 110)))
